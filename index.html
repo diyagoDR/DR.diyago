@@ -1872,6 +1872,11 @@ body.intro-active{overflow:hidden}
   animation:splinterFCurrent .69s var(--ease) calc(var(--burst-delay) + 145ms) both;
 }
 
+
+/* --- 章节进入过渡：视觉动画完成后再允许用户滚动 --- */
+body.detail-transition-lock{overflow:hidden !important;touch-action:none;}
+body.detail-transition-lock #detailScene{overflow:hidden !important;overscroll-behavior:none;}
+
 .home-scene.menu-open .menu-splinter{opacity:1;animation:none}
 .home-scene.menu-open .menu-splinter.a{transform:translate(-7px,-8px) rotate(-21deg)}
 .home-scene.menu-open .menu-splinter.b{transform:translate(9px,-5px) rotate(17deg)}
@@ -2018,7 +2023,7 @@ body.intro-active{overflow:hidden}
   overflow-y:auto;
   overflow-x:hidden;
   overscroll-behavior:contain;
-  scroll-behavior:smooth;
+  scroll-behavior:auto;
   scrollbar-width:thin;
   scrollbar-color:var(--red) var(--black);
 }
@@ -2281,13 +2286,27 @@ body.intro-active{overflow:hidden}
 .detail-footer.reveal-item{
   opacity:0;
   transform:translate3d(0,42px,0) rotate(var(--tilt,0deg));
-  transition:opacity .36s ease,transform .52s var(--ease);
+  transition:opacity .28s ease,transform .42s var(--ease);
+  will-change:opacity,transform;
 }
 .detail-body-label.reveal-item.revealed,
 .detail-card.reveal-item.revealed,
 .detail-footer.reveal-item.revealed{
   opacity:1;
   transform:translate3d(0,0,0) rotate(var(--tilt,0deg));
+}
+/* 离开视口时反向退场：滚轮方向不同，位移方向也相应变化。 */
+.detail-body-label.reveal-item.reveal-exit-up,
+.detail-card.reveal-item.reveal-exit-up,
+.detail-footer.reveal-item.reveal-exit-up{
+  opacity:0;
+  transform:translate3d(0,-42px,0) rotate(var(--tilt,0deg));
+}
+.detail-body-label.reveal-item.reveal-exit-down,
+.detail-card.reveal-item.reveal-exit-down,
+.detail-footer.reveal-item.reveal-exit-down{
+  opacity:0;
+  transform:translate3d(0,42px,0) rotate(var(--tilt,0deg));
 }
 .detail-card.reveal-item{transition-delay:var(--reveal-delay,0ms)}
 
@@ -2495,6 +2514,8 @@ body.intro-active{overflow:hidden}
   display:block!important;
   min-height:0!important;
   padding:22px 26px;
+  contain:layout paint style;
+  backface-visibility:hidden;
   box-shadow:8px 8px 0 var(--red);
   border-width:3px;
 }
@@ -3888,7 +3909,7 @@ function renderExperience(){
       <div class="card-meta">PERSONAL PROFILE</div>
       <div class="avatar-grid">
         <div class="avatar-img" data-lightbox="A.jpg" data-caption="尉跃海 · 个人肖像">
-          <img src="A.jpg" alt="尉跃海 大头照" loading="lazy">
+          <img src="A.jpg" alt="尉跃海 大头照" loading="eager">
         </div>
         <div class="avatar-info">
           <div class="avatar-name">
@@ -3967,7 +3988,8 @@ function renderProjects(){
   const buildShowcaseItems=(files,prefix,caption)=>files.map((filename,i)=>`
     <div class="showcase-item" data-lightbox="${filename}" data-caption="${caption} · ${prefix}${i+1}">
       <span class="showcase-label">${prefix} / 0${i+1}</span>
-      <img src="${filename}" alt="${caption} ${prefix}${i+1}" loading="lazy" decoding="async"
+      <img src="${filename}" alt="${caption} ${prefix}${i+1}" loading="eager" decoding="async"
+           fetchpriority="low"
            onerror="this.closest('.showcase-item').remove()">
     </div>
   `).join("");
@@ -4004,7 +4026,7 @@ function renderProjects(){
   const pptSlots=pptFiles.map((filename,i)=>`
     <div class="ppt-slot" data-ppt-slot="${i+1}" data-lightbox="${filename}" data-caption="PPT 作品 · D${i+1}">
       <span class="ppt-no">PPT / 0${i+1}</span>
-      <img src="${filename}" alt="PPT 作品 D${i+1}" loading="lazy" decoding="async" onerror="this.closest('.ppt-slot').style.display='none'">
+      <img src="${filename}" alt="PPT 作品 D${i+1}" loading="eager" decoding="async" fetchpriority="low" onerror="this.closest('.ppt-slot').style.display='none'">
       <span class="ppt-add">D${i+1}.PNG</span>
     </div>
   `).join("");
@@ -4030,7 +4052,7 @@ function renderProjects(){
     const filename=`C${n}.jpg`;
     return `
       <div class="photo-item" data-lightbox="${filename}" data-caption="摄影作品 · C${n}">
-        <img src="${filename}" alt="摄影作品 ${n}" loading="lazy">
+        <img src="${filename}" alt="摄影作品 ${n}" loading="eager" decoding="async" fetchpriority="low">
       </div>
     `;
   }).join("");
@@ -4091,11 +4113,11 @@ function renderEducation(){
       <div class="card-meta">人工智能应用能力证明</div>
       <div class="cert-grid">
         <div class="cert-item" data-lightbox="B1.jpg" data-caption="AI 技能认证 · 证书 01">
-          <img src="B1.jpg" alt="AI 证书 1" loading="lazy">
+          <img src="B1.jpg" alt="AI 证书 1" loading="eager">
           <span class="cert-label">CERTIFICATE · 01</span>
         </div>
         <div class="cert-item" data-lightbox="B2.jpg" data-caption="AI 技能认证 · 证书 02">
-          <img src="B2.jpg" alt="AI 证书 2" loading="lazy">
+          <img src="B2.jpg" alt="AI 证书 2" loading="eager">
           <span class="cert-label">CERTIFICATE · 02</span>
         </div>
       </div>
@@ -4187,6 +4209,7 @@ function setupScrollReveal(){
 
   $$(".detail-card",$("#detailGrid")).forEach((card,index)=>{
     card.classList.add("reveal-item");
+    card.classList.remove("revealed","reveal-exit-up","reveal-exit-down");
     card.style.setProperty("--reveal-delay",`${Math.min(index*65,260)}ms`);
     targets.push(card);
   });
@@ -4194,8 +4217,16 @@ function setupScrollReveal(){
   const footer=$(".detail-footer",scene);
   if(footer){
     footer.classList.add("reveal-item");
+    footer.classList.remove("revealed","reveal-exit-up","reveal-exit-down");
     footer.style.setProperty("--reveal-delay","100ms");
     targets.push(footer);
+  }
+
+  if(valueProp){
+    valueProp.classList.remove("revealed","reveal-exit-up","reveal-exit-down");
+  }
+  if(label){
+    label.classList.remove("revealed","reveal-exit-up","reveal-exit-down");
   }
 
   if(!targets.length) return;
@@ -4207,18 +4238,48 @@ function setupScrollReveal(){
 
   revealObserver=new IntersectionObserver(entries=>{
     for(const entry of entries){
-      if(!entry.isIntersecting) continue;
       const el=entry.target;
-      el.classList.add("revealed");
-      revealObserver.unobserve(el);
+      if(entry.isIntersecting){
+        el.classList.remove("reveal-exit-up","reveal-exit-down");
+        el.classList.add("revealed");
+      }else{
+        // 双向滚动：向下滚出顶部时向上退场；向上滚出底部时向下退场。
+        const rect=entry.boundingClientRect;
+        const rootRect=entry.rootBounds || scene.getBoundingClientRect();
+        const leavingThroughTop=rect.bottom <= rootRect.top + 8;
+        const leavingThroughBottom=rect.top >= rootRect.bottom - 8;
+        el.classList.remove("revealed");
+        el.classList.toggle("reveal-exit-up",leavingThroughTop);
+        el.classList.toggle("reveal-exit-down",!leavingThroughTop && leavingThroughBottom);
+      }
     }
   },{
     root:scene,
-    threshold:0.06,
-    rootMargin:"0px 0px -12% 0px"
+    threshold:0.08,
+    rootMargin:"-8% 0px -10% 0px"
   });
 
   targets.forEach(el=>revealObserver.observe(el));
+  // Prime the initial layout once while the transition is still running.
+  void scene.offsetHeight;
+}
+
+
+function preloadProjectImages(){
+  const files=[
+    "F1.png","F2.png","F3.png","F4.png","F5.png","F6.png",
+    "E1.png","E2.png","E3.png","E4.png","E5.png","E6.png",
+    "D1.png","D2.png","D3.png","D4.png","D5.png",
+    "C1.jpg","C2.jpg","C3.jpg","C4.jpg","C5.jpg","C6.jpg",
+    "C7.jpg","C8.jpg","C10.jpg","C11.jpg","C12.jpg"
+  ];
+  files.forEach(src=>{
+    const img=new Image();
+    img.decoding="async";
+    img.loading="eager";
+    img.src=src;
+    if(img.decode) img.decode().catch(()=>{});
+  });
 }
 
 function renderDetail(section){
@@ -4251,8 +4312,9 @@ function renderDetail(section){
   $("#detailScene").scrollTop=0;
   setupMobilePages();
 
-  bindLightboxTriggers();
+  if(section==="projects") preloadProjectImages();
   setupScrollReveal();
+  bindLightboxTriggers();
 }
 
 
@@ -4300,6 +4362,7 @@ function createPortalPreview(){
 function openSection(item){
   if(locked)return;
   locked=true;
+  document.body.classList.add("detail-transition-lock");
 
   const section=item.dataset.section;
   renderDetail(section);
@@ -4308,6 +4371,7 @@ function openSection(item){
     $("#homeScene").classList.remove("active");
     $("#detailScene").classList.add("active");
     $("#detailScene").scrollTop=0;
+    document.body.classList.remove("detail-transition-lock");
     locked=false;
     return;
   }
@@ -4355,6 +4419,7 @@ function openSection(item){
   setTimeout(()=>{
     stage.remove();
     item.style.visibility="";
+    document.body.classList.remove("detail-transition-lock");
     locked=false;
   },2160);
 }
@@ -4426,6 +4491,7 @@ function closeDetailViaTitle(){
     stage.remove();
     item.style.visibility="";
     $("#detailScene").scrollTop=0;
+    document.body.classList.remove("detail-transition-lock");
     currentSection=null;
     locked=false;
   },1280);
@@ -4456,6 +4522,7 @@ function closeDetail(){
     $("#homeScene").classList.add("active");
     $("#detailScene").scrollTop=0;
     red.classList.remove("on");
+    document.body.classList.remove("detail-transition-lock");
 
     currentSection=null;
     locked=false;
